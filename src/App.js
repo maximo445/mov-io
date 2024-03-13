@@ -1,6 +1,6 @@
 import "./App.css";
 import no_image from "./no-image.jpg";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 function useInnerWidth() {
   const [innerWith, setInnerWidth] = useState(window.innerWidth);
@@ -25,7 +25,11 @@ function App() {
   const [movieList, setMovieList] = useState([]);
   const [currentMovie, setCurrentMovie] = useState(null);
 
-  const [watchedMovies, setWatchedMovies] = useState([]);
+  const [watchedMovies, setWatchedMovies] = useState(function () {
+    const watched = localStorage.getItem("watchedMovies");
+    return watched ? JSON.parse(watched) : [];
+  });
+
   const totalResults = movieList?.total_results ? movieList.total_results : 0;
   const movies = movieList?.results ? movieList.results : [];
 
@@ -38,6 +42,13 @@ function App() {
   function addMovie(movie) {
     setWatchedMovies((watchedMoviez) => [...watchedMoviez, movie]);
   }
+
+  useEffect(
+    function () {
+      localStorage.setItem("watchedMovies", JSON.stringify(watchedMovies));
+    },
+    [watchedMovies]
+  );
 
   useEffect(
     function () {
@@ -81,6 +92,14 @@ function App() {
           />
         )}
 
+        {viewPortWidth <= 751 && movies.length >= 1 && (
+          <MovieList
+            movies={movies}
+            onSetCurrentMovie={selectCurrentMovie}
+            currentMovie={currentMovie}
+          />
+        )}
+
         <StatsList
           setCurrentMovie={selectCurrentMovie}
           currentMovie={currentMovie}
@@ -110,6 +129,26 @@ function App() {
 }
 
 function SearchHeader({ query, onSetQuery, totalResults }) {
+  const domEl = useRef(null);
+
+  useEffect(
+    function () {
+      function callback(e) {
+        if (e.key === "Enter" && document.activeElement !== domEl.current) {
+          domEl.current.focus();
+          onSetQuery("");
+        }
+      }
+
+      document.addEventListener("keydown", callback);
+
+      return function () {
+        document.removeEventListener("keydown", callback);
+      };
+    },
+    [onSetQuery]
+  );
+
   return (
     <header className="App-header">
       <span className="logo">🍿usePopcorn</span>
@@ -120,6 +159,7 @@ function SearchHeader({ query, onSetQuery, totalResults }) {
           onSetQuery(e.target.value);
         }}
         type="text"
+        ref={domEl}
       />
       <span className="results">Found {totalResults} results</span>
     </header>
